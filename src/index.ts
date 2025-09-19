@@ -1,1 +1,1 @@
-export { TransactionRelayer as Relayer, type RelayerConfig } from './TransactionRelayer'
+export * from './TransactionRelayer'
