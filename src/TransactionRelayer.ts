@@ -1,19 +1,14 @@
-import { Address, Transaction } from '@multiversx/sdk-core/out'
+import { IPlainTransactionObject, Transaction } from '@multiversx/sdk-core/out'
 import { Config } from './config'
-import { Relayable } from './types'
-
-export type RelayerConfig = {
-  endpoint?: string
-  timeout?: number
-  retries?: number
-}
+import { getEntrypoint } from './helpers'
+import { Relayable, RelayerConfig } from './types'
 
 export class TransactionRelayer {
   constructor(public readonly config: RelayerConfig = {}) {
     this.config = {
-      endpoint: Config.Urls.Api,
+      env: 'mainnet',
+      api: Config.Urls.Api,
       timeout: 5000,
-      retries: 3,
       ...config,
     }
   }
@@ -38,7 +33,7 @@ export class TransactionRelayer {
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
 
     try {
-      const response = await fetch(this.config.endpoint!, {
+      const response = await fetch(`${this.config.api}/${sanitizedPath}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
