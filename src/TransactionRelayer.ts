@@ -27,7 +27,8 @@ export class TransactionRelayer {
 
       return Transaction.newFromPlainObject(relayable.tx as IPlainTransactionObject)
     } catch (error) {
-      throw new Error(`Relay failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.warn('Relay failed:', error)
+      return tx
     }
   }
 
