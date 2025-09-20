@@ -1,4 +1,4 @@
-import { IPlainTransactionObject, Transaction } from '@multiversx/sdk-core/out'
+import { AccountOnNetwork, IPlainTransactionObject, Transaction } from '@multiversx/sdk-core/out'
 import { Config } from './config'
 import { getEntrypoint } from './helpers'
 import { RelayableBatchRequest, RelayableBatchResponse, RelayableTxRequest, RelayableTxResponse, RelayerConfig } from './types'
@@ -15,9 +15,11 @@ export class TransactionRelayer {
 
   async relay(tx: Transaction): Promise<Transaction> {
     const entrypoint = getEntrypoint(this.config.env ?? 'mainnet')
+    const account = await entrypoint.createNetworkProvider().getAccount(tx.sender)
+    tx.nonce = account.nonce
 
-    if (tx.nonce === 0n) {
-      tx.nonce = await entrypoint.recallAccountNonce(tx.sender)
+    if (this.hasEnoughBalance(account)) {
+      return tx
     }
 
     try {
@@ -40,8 +42,12 @@ export class TransactionRelayer {
 
   async relayBatch(txs: Transaction[]): Promise<Transaction[]> {
     const entrypoint = getEntrypoint(this.config.env ?? 'mainnet')
-    const nonces = await Promise.all(txs.map((tx) => entrypoint.recallAccountNonce(tx.sender)))
-    txs.forEach((tx, index) => (tx.nonce = nonces[index]))
+    const accounts = await Promise.all(txs.map((tx) => entrypoint.createNetworkProvider().getAccount(tx.sender)))
+    txs.forEach((tx, index) => (tx.nonce = accounts[index].nonce))
+
+    if (accounts.every((account) => this.hasEnoughBalance(account))) {
+      return txs
+    }
 
     const relayable = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
       batch: txs.map((tx) => tx.toPlainObject()),
@@ -79,5 +85,10 @@ export class TransactionRelayer {
       clearTimeout(timeoutId)
       throw error
     }
+  }
+
+  private hasEnoughBalance(account: AccountOnNetwork): boolean {
+    const balanceTreshold = BigInt(Config.Account.MaxBalance) * 10n ** BigInt(Config.Egld.Decimals)
+    return account.balance >= balanceTreshold
   }
 }
