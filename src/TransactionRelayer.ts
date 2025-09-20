@@ -1,7 +1,7 @@
 import { IPlainTransactionObject, Transaction } from '@multiversx/sdk-core/out'
 import { Config } from './config'
 import { getEntrypoint } from './helpers'
-import { Relayable, RelayerConfig } from './types'
+import { Relayable, RelayableBatch, RelayerConfig } from './types'
 
 export class TransactionRelayer {
   constructor(public readonly config: RelayerConfig = {}) {
@@ -33,6 +33,24 @@ export class TransactionRelayer {
 
   async relayOrFail(tx: Transaction): Promise<Transaction> {
     const result = await this.relay(tx)
+    if (!result) throw new Error('Relay failed')
+    return result
+  }
+
+  async relayBatch(txs: Transaction[]): Promise<Transaction[]> {
+    const entrypoint = getEntrypoint(this.config.env ?? 'mainnet')
+    const nonces = await Promise.all(txs.map((tx) => entrypoint.recallAccountNonce(tx.sender)))
+    txs.forEach((tx, index) => (tx.nonce = nonces[index]))
+
+    const relayable = await this.makeRequest<RelayableBatch>('relay/batch', {
+      batch: txs.map((tx) => tx.toPlainObject()),
+    })
+
+    return relayable.batch.map((tx) => Transaction.newFromPlainObject(tx as IPlainTransactionObject))
+  }
+
+  async relayBatchOrFail(txs: Transaction[]): Promise<Transaction[]> {
+    const result = await this.relayBatch(txs)
     if (!result) throw new Error('Relay failed')
     return result
   }

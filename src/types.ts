@@ -9,3 +9,7 @@ export type RelayerConfig = {
 export type Relayable = {
   tx: object
 }
+
+export type RelayableBatch = {
+  batch: object[]
+}
