@@ -4,6 +4,7 @@ export type RelayerConfig = {
   env?: Env
   api?: string
   timeout?: number
+  force?: boolean
 }
 
 export type RelayableTxRequest = {

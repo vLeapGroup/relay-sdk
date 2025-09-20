@@ -9,6 +9,7 @@ export class TransactionRelayer {
       env: 'mainnet',
       api: Config.Urls.Api,
       timeout: 5000,
+      force: false,
       ...config,
     }
   }
@@ -18,7 +19,7 @@ export class TransactionRelayer {
     const account = await entrypoint.createNetworkProvider().getAccount(tx.sender)
     tx.nonce = account.nonce
 
-    if (this.hasEnoughBalance(account)) {
+    if (this.hasEnoughBalance(account) && !this.config.force) {
       return tx
     }
 
@@ -45,7 +46,7 @@ export class TransactionRelayer {
     const accounts = await Promise.all(txs.map((tx) => entrypoint.createNetworkProvider().getAccount(tx.sender)))
     txs.forEach((tx, index) => (tx.nonce = accounts[index].nonce))
 
-    if (accounts.every((account) => this.hasEnoughBalance(account))) {
+    if (accounts.every((account) => this.hasEnoughBalance(account)) && !this.config.force) {
       return txs
     }
 
