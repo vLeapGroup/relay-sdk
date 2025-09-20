@@ -1,6 +1,6 @@
 {
   "name": "@vleap/relay",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Relay MultiversX transactions via the vLeap Relay",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
