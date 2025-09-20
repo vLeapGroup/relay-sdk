@@ -88,7 +88,7 @@ export class TransactionRelayer {
   }
 
   private hasEnoughBalance(account: AccountOnNetwork): boolean {
-    const balanceTreshold = BigInt(Config.Account.MaxBalance) * 10n ** BigInt(Config.Egld.Decimals)
+    const balanceTreshold = BigInt(Config.Account.MaxBalance * 10 ** Config.Egld.Decimals)
     return account.balance >= balanceTreshold
   }
 }
