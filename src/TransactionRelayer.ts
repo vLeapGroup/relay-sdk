@@ -1,7 +1,7 @@
 import { IPlainTransactionObject, Transaction } from '@multiversx/sdk-core/out'
 import { Config } from './config'
 import { getEntrypoint } from './helpers'
-import { Relayable, RelayableBatch, RelayerConfig } from './types'
+import { RelayableBatchRequest, RelayableBatchResponse, RelayableTxRequest, RelayableTxResponse, RelayerConfig } from './types'
 
 export class TransactionRelayer {
   constructor(public readonly config: RelayerConfig = {}) {
@@ -21,7 +21,7 @@ export class TransactionRelayer {
     }
 
     try {
-      const relayable = await this.makeRequest<Relayable>('relay/transaction', {
+      const relayable = await this.makeRequest<RelayableTxRequest, RelayableTxResponse>('relay/transaction', {
         tx: tx.toPlainObject(),
       })
 
@@ -42,7 +42,7 @@ export class TransactionRelayer {
     const nonces = await Promise.all(txs.map((tx) => entrypoint.recallAccountNonce(tx.sender)))
     txs.forEach((tx, index) => (tx.nonce = nonces[index]))
 
-    const relayable = await this.makeRequest<RelayableBatch>('relay/batch', {
+    const relayable = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
       batch: txs.map((tx) => tx.toPlainObject()),
     })
 
@@ -55,7 +55,7 @@ export class TransactionRelayer {
     return result
   }
 
-  private async makeRequest<T>(path: string, data: any): Promise<T> {
+  private async makeRequest<Req, Res>(path: string, data: Req): Promise<Res> {
     if (!this.config.api) throw new Error('Endpoint is not set')
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
@@ -73,7 +73,7 @@ export class TransactionRelayer {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const json = await response.json()
 
-      return json as T
+      return json as Res
     } catch (error) {
       clearTimeout(timeoutId)
       throw error

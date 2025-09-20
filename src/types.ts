@@ -6,10 +6,18 @@ export type RelayerConfig = {
   timeout?: number
 }
 
-export type Relayable = {
+export type RelayableTxRequest = {
   tx: object
 }
 
-export type RelayableBatch = {
+export type RelayableTxResponse = {
+  tx: object
+}
+
+export type RelayableBatchRequest = {
+  batch: object[]
+}
+
+export type RelayableBatchResponse = {
   batch: object[]
 }
