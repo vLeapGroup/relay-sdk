@@ -14,23 +14,29 @@ export class TransactionRelayer {
   }
 
   async relay(tx: Transaction): Promise<Transaction> {
+
     try {
-      const relayable = await this.makeRequest<Relayable>({
+      const relayable = await this.makeRequest<Relayable>('relay/transaction', {
         tx: tx.toPlainObject(),
       })
 
-      tx.relayer = Address.newFromBech32(relayable.relayerAddress)
-      tx.relayerSignature = Uint8Array.from(Buffer.from(relayable.relayerSignature, 'hex'))
-
-      return tx
+      return Transaction.newFromPlainObject(relayable.tx as IPlainTransactionObject)
     } catch (error) {
       throw new Error(`Relay failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
-  private async makeRequest<T>(data: any): Promise<T> {
+  async relayOrFail(tx: Transaction): Promise<Transaction> {
+    const result = await this.relay(tx)
+    if (!result) throw new Error('Relay failed')
+    return result
+  }
+
+  private async makeRequest<T>(path: string, data: any): Promise<T> {
+    if (!this.config.api) throw new Error('Endpoint is not set')
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+    const sanitizedPath = path.replace(/^\/+/, '')
 
     try {
       const response = await fetch(`${this.config.api}/${sanitizedPath}`, {
@@ -43,7 +49,6 @@ export class TransactionRelayer {
       clearTimeout(timeoutId)
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const json = await response.json()
-      console.log('Response relayable:', json)
 
       return json as T
     } catch (error) {
