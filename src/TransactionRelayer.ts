@@ -14,6 +14,11 @@ export class TransactionRelayer {
   }
 
   async relay(tx: Transaction): Promise<Transaction> {
+    const entrypoint = getEntrypoint(this.config.env ?? 'mainnet')
+
+    if (tx.nonce === 0n) {
+      tx.nonce = await entrypoint.recallAccountNonce(tx.sender)
+    }
 
     try {
       const relayable = await this.makeRequest<Relayable>('relay/transaction', {
