@@ -4,8 +4,9 @@ import { getEntrypoint } from './helpers'
 import { RelayableBatchRequest, RelayableBatchResponse, RelayableTxRequest, RelayableTxResponse, RelayerConfig } from './types'
 
 export class TransactionRelayer {
-  constructor(public readonly config: RelayerConfig = {}) {
+  constructor(public readonly config: RelayerConfig) {
     this.config = {
+      chain: 'multiversx',
       env: 'mainnet',
       api: Config.Urls.Api,
       timeout: 5000,
@@ -25,6 +26,8 @@ export class TransactionRelayer {
 
     try {
       const relayable = await this.makeRequest<RelayableTxRequest, RelayableTxResponse>('relay/transaction', {
+        chain: this.config.chain!,
+        projectId: this.config.projectId,
         tx: tx.toPlainObject(),
       })
 
@@ -51,6 +54,8 @@ export class TransactionRelayer {
     }
 
     const relayable = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
+      chain: this.config.chain!,
+      projectId: this.config.projectId,
       batch: txs.map((tx) => tx.toPlainObject()),
     })
 
