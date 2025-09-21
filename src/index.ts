@@ -1,2 +1,2 @@
-export * from './TransactionRelayer'
+export * from './RelayClient'
 export * from './types'

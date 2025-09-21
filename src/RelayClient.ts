@@ -11,7 +11,7 @@ import {
   RelayerConfig,
 } from './types'
 
-export class TransactionRelayer {
+export class RelayClient {
   constructor(public readonly config: RelayerConfig) {
     this.config = {
       chain: 'multiversx',
