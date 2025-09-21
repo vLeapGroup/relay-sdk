@@ -1,7 +1,15 @@
 import { AccountOnNetwork, IPlainTransactionObject, Transaction } from '@multiversx/sdk-core/out'
 import { Config } from './config'
 import { getEntrypoint } from './helpers'
-import { RelayableBatchRequest, RelayableBatchResponse, RelayableTxRequest, RelayableTxResponse, RelayerConfig } from './types'
+import {
+  ErrorType,
+  Handlers,
+  RelayableBatchRequest,
+  RelayableBatchResponse,
+  RelayableTxRequest,
+  RelayableTxResponse,
+  RelayerConfig,
+} from './types'
 
 export class TransactionRelayer {
   constructor(public readonly config: RelayerConfig) {
@@ -15,7 +23,7 @@ export class TransactionRelayer {
     }
   }
 
-  async relay(tx: Transaction): Promise<Transaction> {
+  async relay(tx: Transaction, handlers?: Handlers): Promise<Transaction> {
     const entrypoint = getEntrypoint(this.config.env ?? 'mainnet')
     const account = await entrypoint.createNetworkProvider().getAccount(tx.sender)
     tx.nonce = account.nonce
@@ -33,18 +41,20 @@ export class TransactionRelayer {
 
       return Transaction.newFromPlainObject(relayable.tx as IPlainTransactionObject)
     } catch (error) {
+      const errorType = this.getErrorType(error)
+      handlers?.onError?.(errorType)
       console.warn('Relay failed:', error)
       return tx
     }
   }
 
-  async relayOrFail(tx: Transaction): Promise<Transaction> {
-    const result = await this.relay(tx)
+  async relayOrFail(tx: Transaction, handlers?: Handlers): Promise<Transaction> {
+    const result = await this.relay(tx, handlers)
     if (!result) throw new Error('Relay failed')
     return result
   }
 
-  async relayBatch(txs: Transaction[]): Promise<Transaction[]> {
+  async relayBatch(txs: Transaction[], handlers?: Handlers): Promise<Transaction[]> {
     const entrypoint = getEntrypoint(this.config.env ?? 'mainnet')
     const accounts = await Promise.all(txs.map((tx) => entrypoint.createNetworkProvider().getAccount(tx.sender)))
     txs.forEach((tx, index) => (tx.nonce = accounts[index].nonce))
@@ -53,17 +63,24 @@ export class TransactionRelayer {
       return txs
     }
 
-    const relayable = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
-      chain: this.config.chain!,
-      projectId: this.config.projectId,
-      batch: txs.map((tx) => tx.toPlainObject()),
-    })
+    try {
+      const relayable = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
+        chain: this.config.chain!,
+        projectId: this.config.projectId,
+        batch: txs.map((tx) => tx.toPlainObject()),
+      })
 
-    return relayable.batch.map((tx) => Transaction.newFromPlainObject(tx as IPlainTransactionObject))
+      return relayable.batch.map((tx) => Transaction.newFromPlainObject(tx as IPlainTransactionObject))
+    } catch (error) {
+      const errorType = this.getErrorType(error)
+      handlers?.onError?.(errorType)
+      console.warn('Relay batch failed:', error)
+      return txs
+    }
   }
 
-  async relayBatchOrFail(txs: Transaction[]): Promise<Transaction[]> {
-    const result = await this.relayBatch(txs)
+  async relayBatchOrFail(txs: Transaction[], handlers?: Handlers): Promise<Transaction[]> {
+    const result = await this.relayBatch(txs, handlers)
     if (!result) throw new Error('Relay failed')
     return result
   }
@@ -96,5 +113,17 @@ export class TransactionRelayer {
   private hasEnoughBalance(account: AccountOnNetwork): boolean {
     const balanceTreshold = BigInt(Config.Account.MaxBalance * 10 ** Config.Egld.Decimals)
     return account.balance >= balanceTreshold
+  }
+
+  private getErrorType(error: unknown): ErrorType {
+    if (error instanceof Error) {
+      if (error.message.includes('429') || error.message.includes('rate limit')) {
+        return 'rate-limited'
+      }
+      if (error.message.includes('insufficient') || error.message.includes('balance')) {
+        return 'insufficient-balance'
+      }
+    }
+    return 'unknown'
   }
 }

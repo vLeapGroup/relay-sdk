@@ -2,6 +2,12 @@ export type Env = 'mainnet' | 'testnet' | 'devnet'
 
 export type RelayChain = 'multiversx'
 
+export type ErrorType = 'rate-limited' | 'insufficient-balance' | 'unknown'
+
+export type Handlers = {
+  onError?: (type: ErrorType) => void
+}
+
 export type ProjectId = number
 
 export type RelayerConfig = {
