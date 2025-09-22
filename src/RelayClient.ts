@@ -1,6 +1,7 @@
 import { AccountOnNetwork, IPlainTransactionObject, Transaction } from '@multiversx/sdk-core/out'
 import { Config } from './config'
 import { getEntrypoint } from './helpers'
+import { Logger } from './Logger'
 import {
   ErrorResponse,
   Handlers,
@@ -40,8 +41,8 @@ export class RelayClient {
     })
 
     if (result.error) {
-      handlers?.onError?.(result.error)
-      console.warn('Relay failed:', result.error)
+      handlers?.onError?.(result.error, result.message!)
+      Logger.error('Relay failed', { error: result.error, message: result.message })
       return tx
     }
 
@@ -70,8 +71,8 @@ export class RelayClient {
     })
 
     if (result.error) {
-      handlers?.onError?.(result.error)
-      console.warn('Relay batch failed:', result.error)
+      handlers?.onError?.(result.error, result.message!)
+      Logger.error('Relay batch failed', { error: result.error, message: result.message })
       return txs
     }
 
@@ -99,18 +100,30 @@ export class RelayClient {
       })
 
       clearTimeout(timeoutId)
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      if (!response.ok) {
+        Logger.error('HTTP request failed', {
+          status: response.status,
+          statusText: response.statusText,
+          url: `${this.config.api}/${sanitizedPath}`,
+        })
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const json = await response.json()
 
       if (json && typeof json === 'object' && 'error' in json) {
         const errorResponse = json as ErrorResponse
-        return { res: null, error: errorResponse.error }
+        Logger.error('API returned error', { error: errorResponse.error, message: errorResponse.message })
+        return { res: null, error: errorResponse.error, message: errorResponse.message }
       }
 
-      return { res: json as Res, error: null }
+      return { res: json as Res, error: null, message: null }
     } catch (error) {
       clearTimeout(timeoutId)
-      return { res: null, error: 'unknown' }
+      Logger.error('Network or request failed', {
+        error: error instanceof Error ? error.message : String(error),
+        url: `${this.config.api}/${sanitizedPath}`,
+      })
+      return { res: null, error: 'unknown', message: 'Network or server error occurred' }
     }
   }
 

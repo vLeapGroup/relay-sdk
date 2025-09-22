@@ -5,7 +5,7 @@ export type RelayChain = 'multiversx'
 export type ErrorType = 'rate-limited' | 'balance-required' | 'whitelist-required' | 'unknown'
 
 export type Handlers = {
-  onError?: (type: ErrorType) => void
+  onError?: (type: ErrorType, message: string) => void
 }
 
 export type ProjectId = number
@@ -45,9 +45,11 @@ export type RelayableBatchResponse = {
 
 export type ErrorResponse = {
   error: ErrorType
+  message: string
 }
 
 export type Result<T> = {
   res: T | null
   error: ErrorType | null
+  message: string | null
 }
