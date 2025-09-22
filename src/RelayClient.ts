@@ -2,13 +2,14 @@ import { AccountOnNetwork, IPlainTransactionObject, Transaction } from '@multive
 import { Config } from './config'
 import { getEntrypoint } from './helpers'
 import {
-  ErrorType,
+  ErrorResponse,
   Handlers,
   RelayableBatchRequest,
   RelayableBatchResponse,
   RelayableTxRequest,
   RelayableTxResponse,
   RelayerConfig,
+  Result,
 } from './types'
 
 export class RelayClient {
@@ -32,20 +33,19 @@ export class RelayClient {
       return tx
     }
 
-    try {
-      const relayable = await this.makeRequest<RelayableTxRequest, RelayableTxResponse>('relay/transaction', {
-        chain: this.config.chain!,
-        projectId: this.config.projectId,
-        tx: tx.toPlainObject(),
-      })
+    const result = await this.makeRequest<RelayableTxRequest, RelayableTxResponse>('relay/transaction', {
+      chain: this.config.chain!,
+      projectId: this.config.projectId,
+      tx: tx.toPlainObject(),
+    })
 
-      return Transaction.newFromPlainObject(relayable.tx as IPlainTransactionObject)
-    } catch (error) {
-      const errorType = this.getErrorType(error)
-      handlers?.onError?.(errorType)
-      console.warn('Relay failed:', error)
+    if (result.error) {
+      handlers?.onError?.(result.error)
+      console.warn('Relay failed:', result.error)
       return tx
     }
+
+    return Transaction.newFromPlainObject(result.res!.tx as IPlainTransactionObject)
   }
 
   async relayOrFail(tx: Transaction, handlers?: Handlers): Promise<Transaction> {
@@ -63,20 +63,19 @@ export class RelayClient {
       return txs
     }
 
-    try {
-      const relayable = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
-        chain: this.config.chain!,
-        projectId: this.config.projectId,
-        batch: txs.map((tx) => tx.toPlainObject()),
-      })
+    const result = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
+      chain: this.config.chain!,
+      projectId: this.config.projectId,
+      batch: txs.map((tx) => tx.toPlainObject()),
+    })
 
-      return relayable.batch.map((tx) => Transaction.newFromPlainObject(tx as IPlainTransactionObject))
-    } catch (error) {
-      const errorType = this.getErrorType(error)
-      handlers?.onError?.(errorType)
-      console.warn('Relay batch failed:', error)
+    if (result.error) {
+      handlers?.onError?.(result.error)
+      console.warn('Relay batch failed:', result.error)
       return txs
     }
+
+    return result.res!.batch.map((tx) => Transaction.newFromPlainObject(tx as IPlainTransactionObject))
   }
 
   async relayBatchOrFail(txs: Transaction[], handlers?: Handlers): Promise<Transaction[]> {
@@ -85,7 +84,7 @@ export class RelayClient {
     return result
   }
 
-  private async makeRequest<Req, Res>(path: string, data: Req): Promise<Res> {
+  private async makeRequest<Req, Res>(path: string, data: Req): Promise<Result<Res>> {
     if (!this.config.api) throw new Error('Endpoint is not set')
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
@@ -103,27 +102,20 @@ export class RelayClient {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
       const json = await response.json()
 
-      return json as Res
+      if (json && typeof json === 'object' && 'error' in json) {
+        const errorResponse = json as ErrorResponse
+        return { res: null, error: errorResponse.error }
+      }
+
+      return { res: json as Res, error: null }
     } catch (error) {
       clearTimeout(timeoutId)
-      throw error
+      return { res: null, error: 'unknown' }
     }
   }
 
   private hasEnoughBalance(account: AccountOnNetwork): boolean {
     const balanceTreshold = BigInt(Config.Account.MaxBalance * 10 ** Config.Egld.Decimals)
     return account.balance >= balanceTreshold
-  }
-
-  private getErrorType(error: unknown): ErrorType {
-    if (error instanceof Error) {
-      if (error.message.includes('429') || error.message.includes('rate limit')) {
-        return 'rate-limited'
-      }
-      if (error.message.includes('insufficient') || error.message.includes('balance')) {
-        return 'insufficient-balance'
-      }
-    }
-    return 'unknown'
   }
 }

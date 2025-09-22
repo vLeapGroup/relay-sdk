@@ -2,7 +2,7 @@ export type Env = 'mainnet' | 'testnet' | 'devnet'
 
 export type RelayChain = 'multiversx'
 
-export type ErrorType = 'rate-limited' | 'insufficient-balance' | 'unknown'
+export type ErrorType = 'rate-limited' | 'balance-required' | 'whitelist-required' | 'unknown'
 
 export type Handlers = {
   onError?: (type: ErrorType) => void
@@ -41,4 +41,13 @@ export type RelayableBatchResponse = {
   chain: RelayChain
   projectId: ProjectId
   batch: object[]
+}
+
+export type ErrorResponse = {
+  error: ErrorType
+}
+
+export type Result<T> = {
+  res: T | null
+  error: ErrorType | null
 }
