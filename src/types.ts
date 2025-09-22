@@ -11,7 +11,7 @@ export type Handlers = {
 export type ProjectId = number
 
 export type RelayerConfig = {
-  projectId: ProjectId
+  project: ProjectId
   chain?: RelayChain
   env?: Env
   api?: string
@@ -21,25 +21,25 @@ export type RelayerConfig = {
 
 export type RelayableTxRequest = {
   chain: RelayChain
-  projectId: ProjectId
+  project: ProjectId
   tx: object
 }
 
 export type RelayableTxResponse = {
   chain: RelayChain
-  projectId: ProjectId
+  project: ProjectId
   tx: object
 }
 
 export type RelayableBatchRequest = {
   chain: RelayChain
-  projectId: ProjectId
+  project: ProjectId
   batch: object[]
 }
 
 export type RelayableBatchResponse = {
   chain: RelayChain
-  projectId: ProjectId
+  project: ProjectId
   batch: object[]
 }
 

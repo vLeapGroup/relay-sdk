@@ -36,7 +36,7 @@ export class RelayClient {
 
     const result = await this.makeRequest<RelayableTxRequest, RelayableTxResponse>('relay/transaction', {
       chain: this.config.chain!,
-      projectId: this.config.projectId,
+      project: this.config.project,
       tx: tx.toPlainObject(),
     })
 
@@ -66,7 +66,7 @@ export class RelayClient {
 
     const result = await this.makeRequest<RelayableBatchRequest, RelayableBatchResponse>('relay/batch', {
       chain: this.config.chain!,
-      projectId: this.config.projectId,
+      project: this.config.project,
       batch: txs.map((tx) => tx.toPlainObject()),
     })
 
