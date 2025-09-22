@@ -100,20 +100,27 @@ export class RelayClient {
       })
 
       clearTimeout(timeoutId)
-      if (!response.ok) {
-        Logger.error('HTTP request failed', {
-          status: response.status,
-          statusText: response.statusText,
-          url: `${this.config.api}/${sanitizedPath}`,
-        })
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
       const json = await response.json()
 
-      if (json && typeof json === 'object' && 'error' in json) {
-        const errorResponse = json as ErrorResponse
-        Logger.error('API returned error', { error: errorResponse.error, message: errorResponse.message })
-        return { res: null, error: errorResponse.error, message: errorResponse.message }
+      if (!response.ok) {
+        if (json && typeof json === 'object' && 'error' in json) {
+          const errorResponse = json as ErrorResponse
+          Logger.error('API returned error', {
+            error: errorResponse.error,
+            message: errorResponse.message,
+            status: response.status,
+            statusText: response.statusText,
+            url: `${this.config.api}/${sanitizedPath}`,
+          })
+          return { res: null, error: errorResponse.error, message: errorResponse.message }
+        } else {
+          Logger.error('HTTP request failed with no error details', {
+            status: response.status,
+            statusText: response.statusText,
+            url: `${this.config.api}/${sanitizedPath}`,
+          })
+          return { res: null, error: 'unknown', message: `HTTP error! status: ${response.status}` }
+        }
       }
 
       return { res: json as Res, error: null, message: null }
