@@ -14,9 +14,9 @@ import {
 export class RelayClient {
   constructor(public readonly config: RelayerConfig) {
     this.config = {
-      chain: 'multiversx',
-      env: 'mainnet',
-      api: Config.Urls.Api,
+      chain: Config.Defaults.Chain,
+      env: Config.Defaults.Env,
+      api: Config.Urls.Api(config.env ?? Config.Defaults.Env),
       timeout: 5000,
       force: false,
       ...config,
@@ -24,7 +24,7 @@ export class RelayClient {
   }
 
   async relay(tx: Transaction, handlers?: Handlers): Promise<Transaction> {
-    const entrypoint = getEntrypoint(this.config.env ?? 'mainnet')
+    const entrypoint = getEntrypoint(this.config.env!)
     const account = await entrypoint.createNetworkProvider().getAccount(tx.sender)
     tx.nonce = account.nonce
 
